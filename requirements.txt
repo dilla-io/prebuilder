@@ -1,0 +1,7 @@
+jinja2
+jsonschema
+mergedeep
+requests
+pyyaml
+validators
+coloredlogs

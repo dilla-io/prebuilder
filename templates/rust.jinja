@@ -1,0 +1,261 @@
+#![allow(unused)]
+
+use crate::build_config;
+use crate::SystemConfig;
+use std::collections::HashMap;
+
+pub fn config() {
+    #[allow(dead_code)]
+    let design_system: &str = "{{ design_system }}";
+
+    {#
+    ------------
+    components_with_library
+    -------------
+    -#}
+    let components_with_library: Vec<&str> = vec![
+    {% for component in components_with_library -%}
+      "{{ component }}",
+    {% endfor -%}
+    ];
+
+    {#
+    ------------
+    libraries_keys
+    -------------
+    -#}
+    let libraries_keys: Vec<&str> = vec![
+    {% for key in libraries_keys -%}
+      "{{ key }}",
+    {% endfor -%}
+    ];
+
+    {#
+    ------------
+    variables
+    -------------
+    -#}
+    let mut variables: HashMap<&str, &str> = HashMap::new();
+    {% for variable, default in variables.items() -%}
+      {% if default and "\"" in default -%}
+    variables.insert("{{ variable }}", r#"{{ default|replace("\"", "\\\"")|safe }}"#);
+      {%- else -%}
+    variables.insert("{{ variable }}", "{{ default }}");
+      {%- endif %}
+    {% endfor -%}
+
+    {#
+    ------------
+    styles
+    -------------
+    -#}
+
+    #[allow(dead_code)]
+    let styles: Vec<&str> = vec![
+    {% for style in styles -%}
+      "{{ style }}",
+    {% endfor -%}
+    ];
+
+    {#
+    ------------
+    themes
+    -------------
+    -#}
+    let mut themes: HashMap<&str, HashMap<&str, &str>> = HashMap::new();
+    {% for theme_id, theme in themes.items() -%}
+      let mut theme: HashMap<&str, &str> = HashMap::new();
+      theme.insert("target", "{{ theme.target }}");
+      theme.insert("key", "{{ theme.key }}");
+      theme.insert("val", "{{ theme.val }}");
+      themes.insert("{{ theme_id }}", theme);
+    {% endfor -%}
+
+    {#
+    =====================================
+    =====================================
+    DEFAULT LIBRARIES
+    =====================================
+    =====================================
+    #}
+
+    {#-
+    ------------
+    default_libraries_js
+    -------------
+    #}
+    let mut default_libraries_js: Vec<(&str, HashMap<&str, &str>)> = Vec::new();
+    {% for url, attributes in default_libraries_js.items() -%}
+      {%- set index = "js_data_" ~ loop.index -%}
+      let mut {{ index }}: HashMap<&str, &str> = HashMap::new();
+      {% for key, value in attributes.items() -%}
+        {{ index }}.insert("{{ key }}", "{{ value }}");
+      {%- endfor -%}
+      default_libraries_js.push((
+          "{{ url }}",
+          {{ index }},
+      ));
+    {% endfor -%}
+
+    {#
+    ------------
+    default_libraries_css_html
+    -------------
+    -#}
+    let default_libraries_css_html: &str = r#"{{ default_libraries_css_html|replace("\"", "\\\"")|safe }}"#;
+
+    {#
+    =====================================
+    =====================================
+    OTHER LIBRARIES
+    =====================================
+    =====================================
+    -#}
+
+    {#
+    ------------
+    libraries_css_html
+    -------------
+    -#}
+    let mut libraries_css_html: HashMap<&str, &str> = HashMap::new();
+    {%- for library_id, markup in libraries_css_html.items() %}
+    libraries_css_html.insert(
+        "{{ library_id }}",
+        r#"{{ markup|replace("\"", "\\\"")|safe }}"#,
+    );
+    {% endfor -%}
+
+    {#
+    ------------
+    libraries_js
+    -------------
+    #}
+    let mut libraries_js: HashMap<&str, Vec<(&str, HashMap<&str, &str>)>> = HashMap::new();
+    {% for library_id, library in libraries_js.items() -%}
+      let mut lib_js: Vec<(&str, HashMap<&str, &str>)> = Vec::new();
+      {% for url, attributes in library.items() -%}
+        {%- set index = "js_data_" ~ loop.index -%}
+        let mut {{ index }} = HashMap::new();
+        {% for key, value in attributes.items() -%}
+            {{ index }}.insert("{{ key }}", "{{ value }}");
+        {% endfor -%}
+        lib_js.push((
+            "{{ url }}",
+            {{ index }},
+        ));
+      {% endfor -%}
+      libraries_js.insert(
+          "{{ library_id }}",
+          lib_js,
+      );
+    {% endfor -%}
+
+    {#
+    =====================================
+    =====================================
+    COMPONENT LIBRARIES
+    =====================================
+    =====================================
+    -#}
+
+    {#
+    ------------
+    components_library_css_html
+    -------------
+    #}
+    let mut components_library_css_html = HashMap::new();
+    {%- for component_id, markup in components_library_css_html.items() %}
+    components_library_css_html.insert(
+        "{{ component_id }}",
+        r#"{{ markup|replace("\"", "\\\"")|safe }}"#,
+    );
+    {% endfor -%}
+
+    {#
+    ------------
+    components_library_js
+    -------------
+    #}
+    let mut components_library_js: HashMap<&str, Vec<(&str, HashMap<&str, &str>)>> = HashMap::new();
+    {% for component_id, library in components_library_js.items() -%}
+      let mut lib_js: Vec<(&str, HashMap<&str, &str>)> = Vec::new();
+      {% for url, attributes in library.items() -%}
+        {%- set index = "js_data_" ~ loop.index -%}
+        let mut {{ index }}: HashMap<&str, &str> = HashMap::new();
+        {% for key, value in attributes.items() -%}
+          {{ index }}.insert("{{ key }}", "{{ value }}");
+        {%- endfor -%}
+        lib_js.push((
+            "{{ url }}",
+            {{ index }}
+        ));
+      {%- endfor %}
+      components_library_js.insert(
+          "{{ component_id }}",
+          lib_js,
+      );
+    {% endfor -%}
+
+    {#
+    ------------
+    components_variant_template
+    -------------
+    #}
+    let mut components_variant_template: HashMap<&str, Vec<&str>> = HashMap::new();
+    {% for component, variants in components_variant_template.items() -%}
+    let {{ component }}_variants = vec![
+      {% for variant in variants -%}
+          "{{ variant }}",
+      {% endfor -%}
+    ];
+    components_variant_template.insert(
+        "{{ component }}",
+        {{ component }}_variants,
+    );
+    {% endfor -%}
+
+    {#
+    ------------
+    components_library_dependencies
+    -------------
+    #}
+    let mut components_library_dependencies: HashMap<&str, Vec<&str>> = HashMap::new();
+    {% for component, deps in components_library_dependencies.items() -%}
+    let {{ component }}_dependencies = vec![
+      {% for dep in deps -%}
+        "{{ dep }}",
+      {% endfor -%}
+    ];
+    components_library_dependencies.insert(
+        "{{ component }}",
+        {{ component }}_dependencies,
+    );
+    {%- endfor %}
+
+    {#
+    =====================================
+    =====================================
+    WRAP-UP
+    =====================================
+    =====================================
+    -#}
+
+    let config = SystemConfig {
+        design_system,
+        components_library_css_html,
+        components_library_dependencies,
+        components_library_js,
+        components_variant_template,
+        components_with_library,
+        default_libraries_css_html,
+        default_libraries_js,
+        libraries_css_html,
+        libraries_js,
+        libraries_keys,
+        styles,
+        variables,
+        themes,
+    };
+
+    build_config(config);
+}

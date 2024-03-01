@@ -1,0 +1,89 @@
+# Build a Docker image with CI/CD and push to the GitLab registry.
+# Docker-in-Docker documentation: https://docs.gitlab.com/ee/ci/docker/using_docker_build.html
+
+stages:
+  - docker-build
+  - trigger-schemas
+  - build-package
+
+docker-build:
+  # Use the official docker image.
+  image: docker:latest
+  stage: docker-build
+  services:
+    - docker:dind
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+  # Default branch leaves tag empty (= latest tag)
+  # All other branches are tagged with the escaped branch name (commit ref slug)
+  script:
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "$CI_DEFAULT_BRANCH" ]]; then
+        tag=""
+        echo "Running on default branch '$CI_DEFAULT_BRANCH': tag = 'latest'"
+      else
+        tag=":$CI_COMMIT_REF_SLUG"
+        echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
+      fi
+    - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
+    - docker push "$CI_REGISTRY_IMAGE${tag}"
+  rules:
+    - changes:
+      - Dockerfile
+      - prebuilder.py
+      - templates/rust.jinja
+  # when: manual
+
+.trigger_schemas:
+  stage: trigger-schemas
+  trigger:
+    project: dilla-io/schemas
+    strategy: depend
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - when: manual
+      allow_failure: false
+
+build-package:
+  image: docker:latest
+  stage: build-package
+  services:
+    - docker:dind
+  before_script:
+    - apk add --no-cache curl tar
+    - docker pull --quiet ${DOCKER_IMG_SRC}/schemas
+    - docker pull --quiet ${DOCKER_IMG_SRC}/prebuilder
+  script:
+    - echo -e "\e[34m[INFO] Run ds ${DILLA_DS}\e[0m"
+    - mkdir -p output
+    - |
+      curl --header "PRIVATE-TOKEN: ${GITLAB_TOKEN}" "${DS_ARCHIVE}" | tar -xz
+    # Validate with Schemas project.
+    # @todo validate as a ci variable to skip CI_SKIP_SCHEMAS_VALIDATE
+    # - docker run -t -v ${CI_PROJECT_DIR}/${DILLA_DS}-${DS_BRANCH}:/data/ ${DOCKER_IMG_SRC}/schemas run
+    # Build files.
+    - docker run -t -v ${CI_PROJECT_DIR}/${DILLA_DS}-${DS_BRANCH}:/data/input -v ${CI_PROJECT_DIR}/output:/data/output ${DOCKER_IMG_SRC}/prebuilder run
+    # Package if ok.
+    - echo -e "\e[34m[INFO] Publish package ${DILLA_DS} ${VERSION}\e[0m"
+    - |
+      tar -C output/build/ -czf build.tgz .
+      tar -C output/data/ -czf data.tgz .
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file build.tgz ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${DILLA_DS}-build/${VERSION}/${DILLA_DS}-build.${VERSION}.tar.gz
+      curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file data.tgz ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${DILLA_DS}-data/${VERSION}/${DILLA_DS}-data.${VERSION}.tar.gz
+  variables:
+    VERSION: "1.0"
+    DS_BRANCH: master
+    DS_ARCHIVE: "https://gitlab.com/dilla-io/ds/${DILLA_DS}/-/archive/${DS_BRANCH}/${DILLA_DS}-${DS_BRANCH}.tar.gz"
+    DOCKER_IMG_SRC: registry.gitlab.com/dilla-io
+  parallel:
+    matrix:
+      - DILLA_DS: [bootstrap_4, bootstrap_5, dsfr_1, fragrance_1, material_2, protocol_1, swing_1]
+  artifacts:
+    paths:
+      - output
+    expire_in: 1 day
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - when: manual
+      allow_failure: false
+  when: manual

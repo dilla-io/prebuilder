@@ -6,6 +6,13 @@ stages:
   - trigger-schemas
   - build-package
 
+variables:
+  DOCKER_HOST: tcp://docker:2375
+  RELEASE_REGISTRY: docker.io
+  RELEASE_IMAGE: index.docker.io/$RELEASE_USER
+  IMAGE_NAME: prebuilder
+  DOCKER_BUILDKIT: 1
+
 docker-build:
   # Use the official docker image.
   image: docker:latest
@@ -13,7 +20,8 @@ docker-build:
   services:
     - docker:dind
   before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker --version
+    - echo "$RELEASE_PASSWORD" | docker login $RELEASE_REGISTRY --username $RELEASE_USER --password-stdin
   # Default branch leaves tag empty (= latest tag)
   # All other branches are tagged with the escaped branch name (commit ref slug)
   script:
@@ -25,8 +33,9 @@ docker-build:
         tag=":$CI_COMMIT_REF_SLUG"
         echo "Running on branch '$CI_COMMIT_BRANCH': tag = $tag"
       fi
-    - docker build --pull -t "$CI_REGISTRY_IMAGE${tag}" .
-    - docker push "$CI_REGISTRY_IMAGE${tag}"
+    - echo "Build and push $RELEASE_IMAGE/$IMAGE_NAME$tag"
+    - docker build --tag "$RELEASE_IMAGE/$IMAGE_NAME${tag}" .
+    - docker push "$RELEASE_IMAGE/$IMAGE_NAME${tag}"
   rules:
     - changes:
       - Dockerfile
@@ -71,13 +80,14 @@ build-package:
       curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file build.tgz ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${DILLA_DS}-build/${VERSION}/${DILLA_DS}-build.${VERSION}.tar.gz
       curl --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file data.tgz ${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/packages/generic/${DILLA_DS}-data/${VERSION}/${DILLA_DS}-data.${VERSION}.tar.gz
   variables:
-    VERSION: "1.0"
+    VERSION: "1.0.0"
     DS_BRANCH: master
     DS_ARCHIVE: "https://gitlab.com/dilla-io/ds/${DILLA_DS}/-/archive/${DS_BRANCH}/${DILLA_DS}-${DS_BRANCH}.tar.gz"
-    DOCKER_IMG_SRC: registry.gitlab.com/dilla-io
+    # DOCKER_IMG_SRC: registry.gitlab.com/dilla-io
+    DOCKER_IMG_SRC: dilla-io
   parallel:
     matrix:
-      - DILLA_DS: [bootstrap_4, bootstrap_5, dsfr_1, fragrance_1, material_2, protocol_1, swing_1]
+      - DILLA_DS: [bootstrap_4, bootstrap_5, dsfr_1, fragrance_1, material_2, protocol_1, swing_1, uswds_1]
   artifacts:
     paths:
       - output

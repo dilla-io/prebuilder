@@ -35,7 +35,7 @@ run: ## Run prebuilder on a local input as $DS-master and output to $DS_output, 
 	docker run -t -v $(ROOT_DIR)/$(DS)-master:/data/input -v $(ROOT_DIR)/$(DS)_output:/data/output prebuilder run
 
 build: ## Build prebuilder Docker image
-	 docker build -t prebuilder --rm .
+	- docker build -t prebuilder --rm .
 
 lint: ## Lint prebuilder code
 	- prettier --write README.md

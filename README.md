@@ -1,5 +1,7 @@
 # Prebuilder
 
+Share your design systems in a tiny universal package. [https://dilla.io](https://dilla.io)
+
 ## Setup
 
 ```shell

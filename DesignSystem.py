@@ -145,6 +145,10 @@ class DesignSystem:
             for url, attributes in library["css"].copy().items():
                 if validators.url(url):
                     continue
+                # Sometimes, validators miss complex URL like the google fonts
+                # ones.
+                if url.startswith("https://") or url.startswith("http://"):
+                    continue
                 new_url = url
                 if not new_url.startswith("/"):
                     new_url = os.path.join(path, new_url)
@@ -185,7 +189,9 @@ class DesignSystem:
             if not data.endswith("." + extension):
                 continue
             if not data.startswith("/"):
-                data = os.path.join(path, data)
+                continue
+                # Previously data = os.path.join(path, data) but this
+                # situation has not been encountered yet.
             data = "/".join([self.cdn.rstrip("/"), data.lstrip("/")])
             return data
         return data

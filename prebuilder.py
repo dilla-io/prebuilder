@@ -5,6 +5,7 @@ from DesignSystem import DesignSystem
 from RustGenerator import RustGenerator
 from SchemaGenerator import SchemaGenerator
 from ExamplesExporter import ExamplesExporter
+from TemplateManager import TemplateManager
 import sys
 import glob
 import os
@@ -15,14 +16,6 @@ SOURCE_ROOT = "/data/input"
 TARGET_ROOT = "/data/output"
 
 coloredlogs.install(level="INFO", stream=sys.stdout)
-
-
-def copy_templates(source_path: str, target_path: str) -> None:
-    pattern = source_path + "/components/**/*.jinja"
-    paths = glob.glob(pattern, recursive=True)
-    for path in paths:
-        dst = path.replace(source_path, target_path)
-        FileSystemManager.copy_file(path, dst)
 
 
 def copy_tests(source_path: str, target_path: str) -> None:
@@ -87,7 +80,8 @@ def run_build(cdn: str) -> None:
         schema = schema_generator.generate(definition)
         schema_generator.export(schema, target_path)
 
-        copy_templates(source_path, target_path)
+        template_manager = TemplateManager(design_system)
+        template_manager.copy(source_path, target_path)
         # Before ExamplesExporter to avoid conflicts.
         copy_tests(source_path, target_path)
 

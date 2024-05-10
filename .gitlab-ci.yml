@@ -39,7 +39,7 @@ docker-build:
   rules:
     - changes:
       - Dockerfile
-      - prebuilder.py
+      - '*.py'
       - templates/rust.jinja
   # when: manual
 

@@ -26,9 +26,11 @@ def copy_templates(source_path: str, target_path: str) -> None:
 
 
 def copy_tests(source_path: str, target_path: str) -> None:
-    if not os.path.exists(source_path + "/tests"):
+    source_path = os.path.join(source_path, "tests")
+    target_path = os.path.join(target_path, "tests")
+    if not os.path.exists(source_path):
         return
-    FileSystemManager.copy_directory(source_path + "/tests", target_path + "/tests")
+    FileSystemManager.copy_directory(source_path, target_path)
 
 
 def copy_static_data(source_path: str, target_path: str) -> None:
@@ -85,11 +87,12 @@ def run_build(cdn: str) -> None:
         schema = schema_generator.generate(definition)
         schema_generator.export(schema, target_path)
 
+        copy_templates(source_path, target_path)
+        # Before ExamplesExporter to avoid conflicts.
+        copy_tests(source_path, target_path)
+
         examples_exporter = ExamplesExporter()
         examples_exporter.export(definition, target_path)
-
-        copy_templates(source_path, target_path)
-        copy_tests(source_path, target_path)
     logging.info("Build folder created!")
 
 

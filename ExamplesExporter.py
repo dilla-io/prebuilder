@@ -44,9 +44,8 @@ class ExamplesExporter:
                     renderable = renderable[0]
                 parts = [
                     target_path,
-                    "components",
-                    component_id,
-                    example_id + ".json",
+                    "tests",
+                    component_id + "--" + example_id + ".json",
                 ]
                 path = os.path.join(*parts)
                 content = json.dumps(renderable, indent=4, ensure_ascii=False)
